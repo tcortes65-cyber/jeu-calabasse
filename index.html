@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Calabasse Fleurs</title>
+<style>
+  :root {
+    --bg: #fdf3ea;
+    --card: #ffffff;
+    --ink: #3b2a2a;
+    --rose: #e0577a;
+    --green: #4f9d69;
+    --gold: #f2b134;
+    --muted: #9a8a85;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #app { max-width: 480px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; padding: 12px; gap: 10px; }
+
+  .top { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+  .pill { background: var(--card); border-radius: 999px; padding: 6px 14px; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+
+  .shop { background: var(--card); border-radius: 18px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); text-align: center; }
+  .client { font-size: 52px; line-height: 1; transition: transform .2s; }
+  .client.happy { transform: scale(1.2) rotate(-6deg); }
+  .client.angry { animation: shake .4s; }
+  @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  .bubble { margin-top: 8px; background: #fff7f0; border: 2px dashed #f0cdb8; border-radius: 14px; padding: 8px; font-size: 34px; min-height: 58px; letter-spacing: 6px; }
+  .bubble small { display: block; font-size: 13px; letter-spacing: 0; color: var(--muted); }
+  .bar { height: 12px; background: #eee; border-radius: 999px; margin-top: 10px; overflow: hidden; }
+  .bar > div { height: 100%; width: 100%; background: var(--green); transition: width .1s linear, background .3s; }
+
+  .bouquet { background: var(--card); border-radius: 18px; padding: 10px; min-height: 76px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 38px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .bouquet .empty { font-size: 14px; color: var(--muted); }
+
+  .flowers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .flowers button { font-size: 40px; padding: 10px 0; border: none; border-radius: 16px; background: var(--card); box-shadow: 0 3px 0 #e6d6cb; }
+  .flowers button:active { transform: translateY(3px); box-shadow: none; }
+
+  .actions { display: flex; gap: 8px; }
+  .actions button { flex: 1; border: none; border-radius: 16px; padding: 14px; font-size: 17px; font-weight: 800; color: #fff; }
+  #serve { background: var(--rose); flex: 2; }
+  #clear { background: #b9a9a0; }
+  .actions button:active { transform: scale(.97); }
+
+  .toast { position: fixed; left: 50%; top: 26%; transform: translate(-50%, 0); font-size: 26px; font-weight: 800; pointer-events: none; opacity: 0; }
+  .toast.show { animation: pop 1s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.7); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -40px) scale(1); } }
+
+  .overlay { position: fixed; inset: 0; background: rgba(59,42,42,.55); display: none; align-items: center; justify-content: center; padding: 16px; }
+  .overlay.show { display: flex; }
+  .modal { background: var(--card); border-radius: 22px; padding: 20px; width: 100%; max-width: 420px; text-align: center; }
+  .modal h2 { margin: 0 0 6px; }
+  .modal p { margin: 4px 0 12px; color: var(--muted); }
+  .shopitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #fff7f0; border-radius: 14px; padding: 10px 12px; margin: 8px 0; text-align: left; }
+  .shopitem b { display: block; }
+  .shopitem span { font-size: 13px; color: var(--muted); }
+  .shopitem button, .big { border: none; border-radius: 12px; background: var(--gold); color: #3b2a2a; font-weight: 800; padding: 10px 14px; font-size: 15px; }
+  .shopitem button:disabled { background: #e8dfd9; color: #a99; }
+  .big { width: 100%; margin-top: 10px; background: var(--rose); color: #fff; font-size: 17px; padding: 14px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="pill" id="day">Jour 1</div>
+    <div class="pill" id="coins">🪙 0</div>
+  </div>
+
+  <div class="shop">
+    <div class="client" id="client">🙂</div>
+    <div class="bubble" id="order"></div>
+    <div class="bar"><div id="patience"></div></div>
+  </div>
+
+  <div class="bouquet" id="bouquet"></div>
+
+  <div class="flowers" id="flowers"></div>
+
+  <div class="actions">
+    <button id="clear">Vider</button>
+    <button id="serve">Servir 💐</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay show" id="start">
+  <div class="modal">
+    <h2>🌸 Calabasse Fleurs</h2>
+    <p>Un client te demande un bouquet. Compose-le exactement comme il le veut, avant qu'il s'impatiente !</p>
+    <button class="big" id="play">Ouvrir la boutique</button>
+  </div>
+</div>
+
+<div class="overlay" id="end">
+  <div class="modal">
+    <h2 id="endTitle">Fin de journée</h2>
+    <p id="endText"></p>
+    <div id="upgrades"></div>
+    <button class="big" id="next">Jour suivant</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var FLOWERS = ["🌹", "🌷", "🌻", "🌸", "🪻", "🌼"];
+  var CLIENTS = ["🙂", "👵", "👨‍🦰", "👩‍🦱", "🧔", "👴", "👩‍🦳", "🧑‍🎤"];
+
+  var S = {
+    coins: 0, day: 1,
+    patienceBonus: 0,   // secondes en plus
+    tipBonus: 0,        // niveaux de pourboire
+    served: 0, missed: 0, earned: 0,
+    order: [], bouquet: [],
+    patienceMax: 15, patience: 15,
+    queue: 0, running: false, last: 0
+  };
+
+  var el = function (id) { return document.getElementById(id); };
+
+  function rand(n) { return Math.floor(Math.random() * n); }
+
+  function customersForDay() { return 5 + S.day * 2; }
+  function orderSize() { return Math.min(2 + Math.floor((S.day - 1) / 2), 5); }
+  function flowerChoices() { return Math.min(3 + S.day, FLOWERS.length); }
+
+  function buildFlowerButtons() {
+    var box = el("flowers");
+    box.innerHTML = "";
+    FLOWERS.forEach(function (f) {
+      var b = document.createElement("button");
+      b.textContent = f;
+      b.addEventListener("click", function () { addFlower(f); });
+      box.appendChild(b);
+    });
+  }
+
+  function newCustomer() {
+    var size = orderSize();
+    var pool = FLOWERS.slice(0, flowerChoices());
+    S.order = [];
+    for (var i = 0; i < size; i++) S.order.push(pool[rand(pool.length)]);
+    S.order.sort();
+    S.bouquet = [];
+    S.patienceMax = 10 + size * 3 + S.patienceBonus;
+    S.patience = S.patienceMax;
+    var c = el("client");
+    c.className = "client";
+    c.textContent = CLIENTS[rand(CLIENTS.length)];
+    el("order").innerHTML = S.order.join(" ") + "<small>Je voudrais ce bouquet, s'il vous plaît !</small>";
+    renderBouquet();
+    renderHud();
+  }
+
+  function renderBouquet() {
+    var b = el("bouquet");
+    if (!S.bouquet.length) { b.innerHTML = '<span class="empty">Touche une fleur pour composer le bouquet</span>'; return; }
+    b.textContent = S.bouquet.join(" ");
+  }
+
+  function renderHud() {
+    el("day").textContent = "Jour " + S.day + " · " + S.queue + " client" + (S.queue > 1 ? "s" : "");
+    el("coins").textContent = "🪙 " + S.coins;
+  }
+
+  function addFlower(f) {
+    if (!S.running) return;
+    if (S.bouquet.length >= S.order.length) { toast("Bouquet complet !", "#9a8a85"); return; }
+    S.bouquet.push(f);
+    renderBouquet();
+  }
+
+  function sameBouquet() {
+    if (S.bouquet.length !== S.order.length) return false;
+    var a = S.bouquet.slice().sort();
+    for (var i = 0; i < a.length; i++) if (a[i] !== S.order[i]) return false;
+    return true;
+  }
+
+  function serve() {
+    if (!S.running) return;
+    if (sameBouquet()) {
+      var base = 5 * S.order.length;
+      var ratio = S.patience / S.patienceMax;
+      var tip = Math.round(base * ratio * (0.5 + 0.5 * S.tipBonus));
+      var gain = base + tip;
+      S.coins += gain; S.earned += gain; S.served++;
+      el("client").classList.add("happy");
+      toast("+" + gain + " 🪙" + (tip > 0 ? "  (pourboire " + tip + ")" : ""), "#4f9d69");
+      nextCustomer();
+    } else {
+      S.patience = Math.max(0, S.patience - S.patienceMax * 0.2);
+      S.bouquet = [];
+      renderBouquet();
+      var c = el("client");
+      c.classList.remove("angry"); void c.offsetWidth; c.classList.add("angry");
+      toast("Ce n'est pas ça ! 😠", "#e0577a");
+    }
+  }
+
+  function nextCustomer() {
+    S.queue--;
+    if (S.queue <= 0) { setTimeout(endDay, 600); S.running = false; return; }
+    setTimeout(newCustomer, 450);
+    renderHud();
+  }
+
+  function leave() {
+    S.missed++;
+    el("client").textContent = "😤";
+    toast("Il est parti… 💨", "#e0577a");
+    nextCustomer();
+  }
+
+  function tick(t) {
+    if (!S.running) return;
+    var dt = (t - S.last) / 1000;
+    S.last = t;
+    if (dt > 0.5) dt = 0.5;
+    S.patience -= dt;
+    var pct = Math.max(0, S.patience / S.patienceMax);
+    var bar = el("patience");
+    bar.style.width = (pct * 100) + "%";
+    bar.style.background = pct > 0.5 ? "#4f9d69" : pct > 0.25 ? "#f2b134" : "#e0577a";
+    if (S.patience <= 0) { S.patience = S.patienceMax; leave(); }
+    requestAnimationFrame(tick);
+  }
+
+  function toast(text, color) {
+    var t = el("toast");
+    t.textContent = text; t.style.color = color;
+    t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+  }
+
+  function startDay() {
+    el("start").classList.remove("show");
+    el("end").classList.remove("show");
+    S.served = 0; S.missed = 0; S.earned = 0;
+    S.queue = customersForDay();
+    S.running = true;
+    newCustomer();
+    S.last = performance.now();
+    requestAnimationFrame(tick);
+  }
+
+  var UPGRADES = [
+    { key: "patienceBonus", name: "🪴 Belle vitrine", desc: "Les clients patientent 3 s de plus", step: 3, cost: function () { return 40 + 30 * (S.patienceBonus / 3); } },
+    { key: "tipBonus", name: "🎀 Ruban doré", desc: "Pourboires plus généreux", step: 1, cost: function () { return 50 + 40 * S.tipBonus; } }
+  ];
+
+  function renderUpgrades() {
+    var box = el("upgrades");
+    box.innerHTML = "";
+    UPGRADES.forEach(function (u) {
+      var cost = u.cost();
+      var row = document.createElement("div");
+      row.className = "shopitem";
+      row.innerHTML = "<div><b>" + u.name + "</b><span>" + u.desc + "</span></div>";
+      var btn = document.createElement("button");
+      btn.textContent = "🪙 " + cost;
+      btn.disabled = S.coins < cost;
+      btn.addEventListener("click", function () {
+        if (S.coins < cost) return;
+        S.coins -= cost; S[u.key] += u.step;
+        renderUpgrades(); renderHud();
+      });
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }
+
+  function endDay() {
+    el("endTitle").textContent = "Jour " + S.day + " terminé !";
+    el("endText").textContent = S.served + " bouquet" + (S.served > 1 ? "s" : "") + " vendu" + (S.served > 1 ? "s" : "") +
+      " · " + S.missed + " client" + (S.missed > 1 ? "s" : "") + " parti" + (S.missed > 1 ? "s" : "") +
+      " · +" + S.earned + " 🪙 (total " + S.coins + ")";
+    renderUpgrades();
+    el("end").classList.add("show");
+  }
+
+  el("serve").addEventListener("click", serve);
+  el("clear").addEventListener("click", function () { if (!S.running) return; S.bouquet = []; renderBouquet(); });
+  el("play").addEventListener("click", startDay);
+  el("next").addEventListener("click", function () { S.day++; startDay(); });
+
+  buildFlowerButtons();
+  renderBouquet();
+  renderHud();
+})();
+</script>
+</body>
+</html>
